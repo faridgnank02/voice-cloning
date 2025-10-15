@@ -75,15 +75,14 @@ def get_asr(model_id: str, device_preference: str):
 def gen_sentence():
     return random.choice(SENTENCE_BANK)
 
-def check_pronunciation(audio_path, target_sentence, model_id, lang, device_pref, pass_threshold):
+def check_pronunciation(audio_path, target_sentence, model_id, device_pref, pass_threshold):
     if not target_sentence:
         return gr.update(value=""), gr.update(value=""), gr.update(value=""), gr.update(value="Please generate a sentence first.")
 
     asr = get_asr(model_id, device_pref)
-    # Whisper models accept a 'generate' kwarg with language hints via tokenizer, but
-    # transformers pipeline exposes it as 'generate_kwargs' for whisper models.
+
     try:
-        result = asr(audio_path, generate_kwargs={"language": lang} if lang else None)
+        result = asr(audio_path)  # ✅ no language/task args for English-only models
         hyp_raw = result["text"].strip()
     except Exception as e:
         return "", "", "", f"Transcription failed: {e}"
@@ -122,20 +121,17 @@ with gr.Blocks(title="Say the Sentence") as demo:
     with gr.Row():
         audio = gr.Audio(sources=["microphone"], type="filepath", label="Record your voice")
     with gr.Accordion("Advanced settings", open=False):
-        model_id = gr.Dropdown(
-            choices=[
-                "openai/whisper-tiny.en",      # Fastest (English)
-                "openai/whisper-base.en",
-                "openai/whisper-small.en",
-                "distil-whisper/distil-small.en",  # Distil variant (English)
-                "openai/whisper-tiny",         # Multilingual tiny
-            ],
-            value="openai/whisper-tiny.en",
-            label="ASR model",
-        )
-        lang = gr.Textbox(value="en", label="Language hint (e.g., 'en', 'de', 'fr')", info="Whisper language code; leave as 'en' for English-only models.")
-        device_pref = gr.Radio(choices=["auto", "cpu", "cuda"], value="auto", label="Device preference")
-        pass_threshold = gr.Slider(0.50, 1.00, value=0.85, step=0.01, label="Match threshold")
+    model_id = gr.Dropdown(
+        choices=[
+            "openai/whisper-tiny.en",  # fastest
+            "openai/whisper-base.en",  # slightly better accuracy
+            "distil-whisper/distil-small.en",  # optional
+        ],
+        value="openai/whisper-tiny.en",
+        label="ASR model (English only)",
+    )
+    device_pref = gr.Radio(choices=["auto", "cpu", "cuda"], value="auto", label="Device preference")
+    pass_threshold = gr.Slider(0.50, 1.00, value=0.85, step=0.01, label="Match threshold")
 
     with gr.Row():
         btn_check = gr.Button("✅ Transcribe & Check", variant="primary")
@@ -151,9 +147,9 @@ with gr.Blocks(title="Say the Sentence") as demo:
     btn_gen.click(fn=gen_sentence, outputs=target)
     btn_clear.click(fn=lambda: ("", "", "", "", ""), outputs=[target, hyp_out, score_out, diff_out, summary_out])
     btn_check.click(
-        fn=check_pronunciation,
-        inputs=[audio, target, model_id, lang, device_pref, pass_threshold],
-        outputs=[hyp_out, score_out, diff_out, summary_out]
+    fn=check_pronunciation,
+    inputs=[audio, target, model_id, device_pref, pass_threshold],
+    outputs=[hyp_out, score_out, diff_out, summary_out]
     )
 
 if __name__ == "__main__":
