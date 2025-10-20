@@ -85,3 +85,4 @@ class SentenceMatcher:
         self.ratio, self.alignments = similarity_and_diff(self.target_tokens,
                                                           self.user_tokens)
         self.passed: bool = self.ratio >= self.pass_threshold
+

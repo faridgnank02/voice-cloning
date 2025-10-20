@@ -2,12 +2,14 @@ import gradio as gr
 
 import src.generate as generate
 import src.process as process
+import src.tts as tts
 
 
 # ------------------- UI printing functions -------------------
 def clear_all():
-    # target, user_transcript, score_html, diff_html, result_html
-    return "", "", "", "", ""
+    # target, user_transcript, score_html, diff_html, result_html,
+    # tts_text, clone_status, tts_audio
+    return "", "", "", "", "", "", "", None
 
 
 def make_result_html(pass_threshold, passed, ratio):
@@ -66,15 +68,17 @@ def make_html(sentence_match):
                                     sentence_match.user_tokens,
                                     sentence_match.alignments)
     result_html, score_html = make_result_html(sentence_match.pass_threshold,
-                                     sentence_match.passed,
-                                     sentence_match.ratio)
+                                               sentence_match.passed,
+                                               sentence_match.ratio)
 
     return score_html, result_html, diff_html
 
 
 # ------------------- Core Check (English-only) -------------------
-def get_user_transcript(audio_path: gr.Audio, target_sentence: str, model_id: str, device_pref: str) -> (str, str):
-    """Uses the selected ASR model `model_id` to recognize words in the input `audio_path`.
+def get_user_transcript(audio_path: gr.Audio, target_sentence: str,
+                        model_id: str, device_pref: str) -> (str, str):
+    """ASR for the input audio and basic validation.
+    Uses the selected ASR model `model_id` to recognize words in the input `audio_path`.
     Parameters:
         audio_path: Processed audio file returned from gradio Audio component.
         target_sentence: Sentence the user needs to say.
@@ -84,7 +88,6 @@ def get_user_transcript(audio_path: gr.Audio, target_sentence: str, model_id: st
         error_msg: If there's an error, a string describing what happened.
         user_transcript: The recognized user utterance.
     """
-    error_msg = ""
     # Handles user interaction errors.
     if not target_sentence:
         return "Please generate a sentence first.", ""
@@ -92,20 +95,18 @@ def get_user_transcript(audio_path: gr.Audio, target_sentence: str, model_id: st
     if audio_path is None:
         return "Please start, record, then stop the audio recording before trying to transcribe.", ""
 
-    # Runs automatic speech recognition
+    # Runs the automatic speech recognition
     user_transcript = process.run_asr(audio_path, model_id, device_pref)
 
     # Handles processing errors.
-    if type(user_transcript) is Exception:
+    if isinstance(user_transcript, Exception):
         return f"Transcription failed: {user_transcript}", ""
-
-    return error_msg, user_transcript
+    return "", user_transcript
 
 
 def transcribe_check(audio_path, target_sentence, model_id, device_pref,
                      pass_threshold):
-    """Transcribe the input user audio, calculate the match to the target sentence,
-    create the output HTML string displaying the results.
+    """Transcribe user, calculate match to target sentence, create results HTML.
     Parameters:
         audio_path: Local path to recorded audio.
         target_sentence: Sentence the user needs to say.
@@ -118,19 +119,65 @@ def transcribe_check(audio_path, target_sentence, model_id, device_pref,
         result_html: HTML string describing the results, or an error message
     """
     # Transcribe user input
-    error_msg, user_transcript = get_user_transcript(audio_path, target_sentence, model_id,
-                                          device_pref)
-    if error_msg != "":
+    error_msg, user_transcript = get_user_transcript(audio_path,
+                                                     target_sentence, model_id,
+                                                     device_pref)
+    if error_msg:
         score_html = ""
         diff_html = ""
         result_html = error_msg
     else:
         # Calculate match details between the target and recognized user input
-        sentence_match = process.SentenceMatcher(target_sentence, user_transcript,
+        sentence_match = process.SentenceMatcher(target_sentence,
+                                                 user_transcript,
                                                  pass_threshold)
         # Create the output to print out
         score_html, result_html, diff_html = make_html(sentence_match)
     return user_transcript, score_html, result_html, diff_html
+
+
+# ------------------- Voice cloning gate -------------------
+def clone_if_pass(
+        audio_path,  # ref voice (the same recorded clip)
+        target_sentence,  # sentence user was supposed to say
+        user_transcript,  # what ASR heard
+        tts_text,  # what we want to synthesize (in cloned voice)
+        pass_threshold,  # must meet or exceed this
+        tts_model_id,  # e.g., "coqui/XTTS-v2"
+        tts_language,  # e.g., "en"
+):
+    """
+    If user correctly read the target (>= threshold), clone their voice from the
+    recorded audio and speak 'tts_text'. Otherwise, refuse.
+    """
+    # Basic validations
+    if audio_path is None:
+        return None, "Record audio first (reference voice is required)."
+    if not target_sentence:
+        return None, "Generate a target sentence first."
+    if not user_transcript:
+        return None, "Transcribe first to verify the sentence."
+    if not tts_text:
+        return None, "Enter the sentence to synthesize."
+
+    # Recompute pass/fail to avoid relying on UI state
+    sm = process.SentenceMatcher(target_sentence, user_transcript,
+                                 pass_threshold)
+    if not sm.passed:
+        return None, (
+            f"❌ Cloning blocked: your reading did not reach the threshold "
+            f"({sm.ratio * 100:.1f}% < {int(pass_threshold * 100)}%)."
+        )
+
+    # Run zero-shot cloning
+    out = tts.run_tts_clone(audio_path, tts_text, model_id=tts_model_id,
+                            language=tts_language)
+    if isinstance(out, Exception):
+        return None, f"Voice cloning failed: {out}"
+    sr, wav = out
+    # Gradio Audio can take a tuple (sr, np.array)
+    return (
+    sr, wav), f"✅ Cloned and synthesized with {tts_model_id} ({tts_language})."
 
 
 # ------------------- UI -------------------
@@ -141,6 +188,7 @@ with gr.Blocks(title="Say the Sentence (English)") as demo:
         1) Generate a sentence.  
         2) Record yourself reading it.  
         3) Transcribe & check your accuracy.  
+        4) If matched, clone your voice to speak any sentence you enter.
         """
     )
 
@@ -161,8 +209,8 @@ with gr.Blocks(title="Say the Sentence (English)") as demo:
             choices=[
                 "openai/whisper-tiny.en",  # fastest (CPU-friendly)
                 "openai/whisper-base.en",  # better accuracy, a bit slower
-                "distil-whisper/distil-small.en"
-                # optional distil English model
+                "distil-whisper/distil-small.en"  # optional distil English model
+                "distil-whisper/distil-small.en",
             ],
             value="openai/whisper-tiny.en",
             label="ASR model (English only)",
@@ -185,18 +233,58 @@ with gr.Blocks(title="Say the Sentence (English)") as demo:
     diff_html = gr.HTML(
         label="Word-level diff (red = expected but missing / green = extra or replacement)")
 
+#    gr.Markdown("## 🔁 Voice cloning (gated)")
+#    with gr.Row():
+#        tts_text = gr.Textbox(
+#            label="Text to synthesize (voice clone)",
+#            placeholder="Type the sentence you want the cloned voice to say",
+#        )
+#    with gr.Row():
+#        tts_model_id = gr.Dropdown(
+#            choices=[
+#                "coqui/XTTS-v2",
+#                # add others if you like, e.g. "myshell-ai/MeloTTS"
+#            ],
+#            value="coqui/XTTS-v2",
+#            label="TTS (voice cloning) model",
+#        )
+#        tts_language = gr.Dropdown(
+#            choices=["en", "de", "fr", "es", "it", "pt", "pl", "tr", "ru", "nl",
+#                     "cs", "ar", "zh"],
+#            value="en",
+#            label="Language",
+#        )
+
+#    with gr.Row():
+#        btn_clone = gr.Button("🔁 Clone voice (if passed)", variant="secondary")
+#    with gr.Row():
+#        tts_audio = gr.Audio(label="Cloned speech output", interactive=False)
+#        clone_status = gr.Label(label="Cloning status")
+
     # -------- Events --------
-    # Uncomment below if you prefer to use the pre-specified set of target sentences.
+    # Use pre-specified sentence bank by default
     btn_gen.click(fn=generate.gen_sentence_set, outputs=target)
-    # Comment this out below if you prefer to use the pre-specified set of target sentences (above).
+    # Or use LLM generation:
     # btn_gen.click(fn=generate.gen_sentence_llm, outputs=target)
-    btn_clear.click(fn=clear_all,
-                    outputs=[target, user_transcript, score_html, result_html, diff_html])
+
+    btn_clear.click(
+        fn=clear_all,
+        outputs=[target, user_transcript, score_html, result_html, diff_html,]
+#                 tts_text, clone_status, tts_audio]
+    )
+
     btn_check.click(
         fn=transcribe_check,
         inputs=[audio, target, model_id, device_pref, pass_threshold],
         outputs=[user_transcript, score_html, result_html, diff_html]
     )
+
+#    btn_clone.click(
+#        fn=clone_if_pass,
+#        inputs=[audio, target, user_transcript, tts_text, pass_threshold,
+#                tts_model_id, tts_language],
+#        outputs=[tts_audio, clone_status],
+#    )
 
 if __name__ == "__main__":
     demo.launch()
