@@ -1,16 +1,20 @@
 import gradio as gr
 # import spaces
+from gradio_client import Client, handle_file
 
 import src.generate as generate
 import src.process as process
 
-chatterbox_space = gr.load("spaces/ResembleAI/Chatterbox")
+# TODO: Abusing the 'global' notation for now so we can be flexible to multiple clients.
+global client
 
+# TODO: Ideally, instead of the Client method we're using for an external voice cloning app, we use the .load() function and pass in arguments to it directly while displaying the developer's desired UI.
+#chatterbox_space = gr.load("spaces/ResembleAI/Chatterbox")
 # ------------------- UI printing functions -------------------
 def clear_all():
     # target, user_transcript, score_html, diff_html, result_html,
-    # tts_text, clone_status, tts_audio
-    return "", "", "", "", "", "", "", None
+    # TODO(?): Add tts_text, tts_audio, clone_status (Maybe? Was there before.)
+    return "", "", "", "", "", "", "", None,
 
 
 def make_result_html(pass_threshold, passed, ratio):
@@ -119,7 +123,7 @@ def transcribe_check(audio_path, target_sentence, model_id, device_pref,
         score_html: HTML string to display the score
         diff_html: HTML string for displaying the differences between target and user utterance
         result_html: HTML string describing the results, or an error message
-        clone_audio: Bool for whether to allow audio cloning: This makes the audio cloning component visible
+        clone_audio: Bool for whether to allow audio cloning: This makes the audio cloning components visible
     """
     clone_audio = False
     # Transcribe user input
@@ -141,6 +145,18 @@ def transcribe_check(audio_path, target_sentence, model_id, device_pref,
         score_html, result_html, diff_html = make_html(sentence_match)
 
     return user_transcript, score_html, result_html, diff_html, gr.Row(visible=clone_audio)
+
+def clone_voice(audio_input, text_input):
+    # TODO: Note that this is the 'global' hack to pass in the client.
+    global client
+    # Additional specifications for Chatterbox include:
+    # exaggeration_input=0.5,
+    # temperature_input=0.8,
+    # seed_num_input=0,
+    # cfgw_input=0.5,
+    # api_name="/generate_tts_audio"
+    return client.predict(text_input=text_input,
+                            audio_prompt_path_input=handle_file(audio_input))
 
 
 # ------------------- UI -------------------
@@ -164,8 +180,7 @@ with gr.Blocks(title="Say the Sentence (English)") as demo:
         btn_clear = gr.Button("🧹 Clear")
 
     with gr.Row():
-        audio = gr.Audio(sources=["microphone"], type="filepath",
-                         label="Record your voice")
+        consent_audio = gr.Audio(sources=["microphone"], type="filepath", label="Record your voice", key='consent_audio')
 
     with gr.Accordion("Advanced settings", open=False):
         model_id = gr.Dropdown(
@@ -196,10 +211,31 @@ with gr.Blocks(title="Say the Sentence (English)") as demo:
     diff_html = gr.HTML(
         label="Word-level diff (red = expected but missing / green = extra or replacement)")
 
+    # TODO: Ideally this is gr.Blocks, but that seems to have a visibility-change bug.
     with gr.Row(visible=False) as tts_ui:
-        with gr.Row():
-            gr.Markdown("## 🔁 Voice cloning (gated)")
-        chatterbox_space.render()
+        # Using the render decorator so that we can easily pass in the consent audio after it's recorded.
+        @gr.render(inputs=consent_audio)
+        def show_tts(audio_input):
+            # TODO: Abusing global, since we can't send a Client as a component to a function.
+            global client
+            if audio_input:
+                client = Client("ResembleAI/Chatterbox")
+                with gr.Row():
+                    gr.Markdown("# 🔁 Voice cloning")
+                with gr.Row():
+                    with gr.Column():
+                        gr.Markdown("## Audio input")
+                        # Prepopulating with the consent audio.
+                        tts_audio = gr.Audio(audio_input, interactive=True, type="filepath")
+                with gr.Row():
+                    with gr.Column():
+                        gr.Markdown("## Text input")
+                        tts_text = gr.Textbox(
+                            "Now let's make my mum's favourite. So three mars bars into the pan. Then we add the tuna and just stir for a bit, just let the chocolate and fish infuse. A sprinkle of olive oil and some tomato ketchup. Now smell that. Oh boy this is going to be incredible.", interactive=True)
+                with gr.Row():
+                    clone_btn = gr.Button("Clone!")
+                    cloned_audio = gr.Audio()
+                    clone_btn.click(fn=clone_voice, inputs=[tts_audio, tts_text], outputs=[cloned_audio])
 
     # -------- Events --------
     # Use pre-specified sentence bank by default
@@ -207,18 +243,18 @@ with gr.Blocks(title="Say the Sentence (English)") as demo:
     # Or use LLM generation:
     # btn_gen.click(fn=generate.gen_sentence_llm, outputs=target)
 
+    # TODO(?): clearing  tts_text, tts_audio, clone_status (not sure what that was)
     btn_clear.click(
         fn=clear_all,
-        outputs=[target, user_transcript, score_html, result_html, diff_html,]
-#                 tts_text, clone_status, tts_audio]
+        outputs=[target, user_transcript, score_html, result_html, diff_html]
     )
 
     btn_check.click(
         fn=transcribe_check,
-        inputs=[audio, target, model_id, device_pref, pass_threshold],
+        inputs=[consent_audio, target, model_id, device_pref, pass_threshold],
         outputs=[user_transcript, score_html, result_html, diff_html, tts_ui]
     )
 
 
 if __name__ == "__main__":
-    demo.launch()
+    demo.launch(show_error=True)
