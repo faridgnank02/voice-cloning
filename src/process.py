@@ -2,6 +2,7 @@ import difflib
 import re
 from functools import lru_cache
 
+import spaces
 import gradio.components.audio as gr_audio
 import torch
 from transformers import pipeline
@@ -21,6 +22,7 @@ def normalize_text(t: str, lower: bool = True) -> str:
 
 
 @lru_cache(maxsize=2)
+@spaces.GPU
 def get_asr_pipeline(model_id: str, device_preference: str) -> pipeline:
     """Cache an ASR pipeline.
     Parameters:
