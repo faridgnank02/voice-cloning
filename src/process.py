@@ -40,7 +40,7 @@ def get_asr_pipeline(model_id: str, device_preference: str) -> pipeline:
     return pipeline(
         "automatic-speech-recognition",
         model=model_id,           # use English-only Whisper models (.en)
-        device=device,
+        # device=device,
         chunk_length_s=30,
         return_timestamps=False,
     )
