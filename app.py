@@ -1,5 +1,5 @@
 import gradio as gr
-import spaces
+# import spaces
 
 import src.generate as generate
 import src.process as process
@@ -76,7 +76,7 @@ def make_html(sentence_match):
 
 
 # ------------------- Core Check (English-only) -------------------
-@spaces.GPU
+# @spaces.GPU
 def get_user_transcript(audio_path: gr.Audio, target_sentence: str,
                         model_id: str, device_pref: str) -> (str, str):
     """ASR for the input audio and basic validation.
