@@ -2,8 +2,8 @@ import gradio as gr
 
 import src.generate as generate
 import src.process as process
-import src.tts as tts
 
+chatterbox_space = gr.load("spaces/ResembleAI/Chatterbox")
 
 # ------------------- UI printing functions -------------------
 def clear_all():
@@ -117,7 +117,9 @@ def transcribe_check(audio_path, target_sentence, model_id, device_pref,
         score_html: HTML string to display the score
         diff_html: HTML string for displaying the differences between target and user utterance
         result_html: HTML string describing the results, or an error message
+        clone_audio: Bool for whether to allow audio cloning: This makes the audio cloning component visible
     """
+    clone_audio = False
     # Transcribe user input
     error_msg, user_transcript = get_user_transcript(audio_path,
                                                      target_sentence, model_id,
@@ -131,53 +133,12 @@ def transcribe_check(audio_path, target_sentence, model_id, device_pref,
         sentence_match = process.SentenceMatcher(target_sentence,
                                                  user_transcript,
                                                  pass_threshold)
+        if sentence_match.passed:
+            clone_audio = True
         # Create the output to print out
         score_html, result_html, diff_html = make_html(sentence_match)
-    return user_transcript, score_html, result_html, diff_html
 
-
-# ------------------- Voice cloning gate -------------------
-def clone_if_pass(
-        audio_path,  # ref voice (the same recorded clip)
-        target_sentence,  # sentence user was supposed to say
-        user_transcript,  # what ASR heard
-        tts_text,  # what we want to synthesize (in cloned voice)
-        pass_threshold,  # must meet or exceed this
-        tts_model_id,  # e.g., "coqui/XTTS-v2"
-        tts_language,  # e.g., "en"
-):
-    """
-    If user correctly read the target (>= threshold), clone their voice from the
-    recorded audio and speak 'tts_text'. Otherwise, refuse.
-    """
-    # Basic validations
-    if audio_path is None:
-        return None, "Record audio first (reference voice is required)."
-    if not target_sentence:
-        return None, "Generate a target sentence first."
-    if not user_transcript:
-        return None, "Transcribe first to verify the sentence."
-    if not tts_text:
-        return None, "Enter the sentence to synthesize."
-
-    # Recompute pass/fail to avoid relying on UI state
-    sm = process.SentenceMatcher(target_sentence, user_transcript,
-                                 pass_threshold)
-    if not sm.passed:
-        return None, (
-            f"❌ Cloning blocked: your reading did not reach the threshold "
-            f"({sm.ratio * 100:.1f}% < {int(pass_threshold * 100)}%)."
-        )
-
-    # Run zero-shot cloning
-    out = tts.run_tts_clone(audio_path, tts_text, model_id=tts_model_id,
-                            language=tts_language)
-    if isinstance(out, Exception):
-        return None, f"Voice cloning failed: {out}"
-    sr, wav = out
-    # Gradio Audio can take a tuple (sr, np.array)
-    return (
-    sr, wav), f"✅ Cloned and synthesized with {tts_model_id} ({tts_language})."
+    return user_transcript, score_html, result_html, diff_html, gr.Row(visible=clone_audio)
 
 
 # ------------------- UI -------------------
@@ -233,33 +194,10 @@ with gr.Blocks(title="Say the Sentence (English)") as demo:
     diff_html = gr.HTML(
         label="Word-level diff (red = expected but missing / green = extra or replacement)")
 
-#    gr.Markdown("## 🔁 Voice cloning (gated)")
-#    with gr.Row():
-#        tts_text = gr.Textbox(
-#            label="Text to synthesize (voice clone)",
-#            placeholder="Type the sentence you want the cloned voice to say",
-#        )
-#    with gr.Row():
-#        tts_model_id = gr.Dropdown(
-#            choices=[
-#                "coqui/XTTS-v2",
-#                # add others if you like, e.g. "myshell-ai/MeloTTS"
-#            ],
-#            value="coqui/XTTS-v2",
-#            label="TTS (voice cloning) model",
-#        )
-#        tts_language = gr.Dropdown(
-#            choices=["en", "de", "fr", "es", "it", "pt", "pl", "tr", "ru", "nl",
-#                     "cs", "ar", "zh"],
-#            value="en",
-#            label="Language",
-#        )
-
-#    with gr.Row():
-#        btn_clone = gr.Button("🔁 Clone voice (if passed)", variant="secondary")
-#    with gr.Row():
-#        tts_audio = gr.Audio(label="Cloned speech output", interactive=False)
-#        clone_status = gr.Label(label="Cloning status")
+    with gr.Row(visible=False) as tts_ui:
+        with gr.Row():
+            gr.Markdown("## 🔁 Voice cloning (gated)")
+        chatterbox_space.render()
 
     # -------- Events --------
     # Use pre-specified sentence bank by default
@@ -276,15 +214,9 @@ with gr.Blocks(title="Say the Sentence (English)") as demo:
     btn_check.click(
         fn=transcribe_check,
         inputs=[audio, target, model_id, device_pref, pass_threshold],
-        outputs=[user_transcript, score_html, result_html, diff_html]
+        outputs=[user_transcript, score_html, result_html, diff_html, tts_ui]
     )
 
-#    btn_clone.click(
-#        fn=clone_if_pass,
-#        inputs=[audio, target, user_transcript, tts_text, pass_threshold,
-#                tts_model_id, tts_language],
-#        outputs=[tts_audio, clone_status],
-#    )
 
 if __name__ == "__main__":
     demo.launch()
