@@ -1,4 +1,4 @@
-# src/utils/prompts.py
+# src/prompts.py
 
 def get_consent_generation_prompt(audio_model_name: str, short_prompt: bool = False) -> str:
     """
@@ -43,5 +43,5 @@ def get_consent_generation_prompt(audio_model_name: str, short_prompt: bool = Fa
         - “I give my consent to use my voice for generating audio with the model {audio_model_name}. This statement is made freely and clearly.”
         - “Good afternoon. I agree to the use of my recorded voice for audio generation with the model {audio_model_name}.”
 
-        The output should be a single, natural sentence ready to be spoken aloud for recording purposes.
+        The output should be one to three natural sentences ready to be spoken aloud for recording purposes.
         """
