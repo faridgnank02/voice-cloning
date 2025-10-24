@@ -1,47 +1,59 @@
-# src/utils/prompts.py
+import random
 
-def get_consent_generation_prompt(audio_model_name: str, short_prompt: bool = False) -> str:
+def get_consent_generation_prompt(audio_model_name: str) -> str:
     """
     Returns a text prompt instructing the model to generate a natural-sounding
     consent sentence for voice cloning with the specified model.
 
     Args:
         audio_model_name (str): Name of the audio model to mention in the prompt.
-        short_prompt (bool): If True, returns a concise one-line prompt suitable
-            for direct model input. If False (default), returns the full detailed prompt.
 
     Returns:
-        str: The prompt text.
+        str: The prompt text, with a randomized topic for the second sentence.
     """
 
-    if short_prompt:
-        return (
-            f"Generate one natural, spoken-style English sentence (10–20 words) in which a person "
-            f"clearly gives informed consent to use their voice for generating synthetic audio "
-            f"with the model {audio_model_name}. The sentence should sound conversational, include "
-            f"a clear consent phrase like 'I give my consent' or 'I agree', mention {audio_model_name} "
-            f"by name, and be phonetically varied but neutral in tone. Output only the final sentence."
-        )
+    # Possible neutral or everyday topics to diversify phonetic variety
+    topics = [
+        "the weather",
+        "daily routines",
+        "travel or commuting",
+        "food or cooking",
+        "music",
+        "nature or seasons",
+        "time of day",
+        "a calm place like a park or café",
+        "light exercise or relaxation",
+        "reading or learning something new",
+        "a pleasant conversation with a friend",
+        "observing surroundings like streets or sky",
+        "working or focusing quietly"
+    ]
+
+    # Randomly choose one for this prompt instance
+    topic = random.choice(topics)
 
     return f"""
-        Generate a short, natural-sounding English sentence (10–20 words) that a person could say aloud 
-        to clearly state their informed consent to use their voice for generating synthetic audio with 
-        an AI model called {audio_model_name}.
+        Generate exactly two short, natural-sounding English sentences (10-15 words each) that a person could say aloud, using everyday language.
 
-        The sentence should:
-        - Sound natural and conversational, not like legal text.
-        - Explicitly include a consent phrase, such as “I give my consent,” “I agree,” or “I allow.”
-        - Mention the model name ({audio_model_name}) clearly in the sentence.
-        - Include a neutral descriptive clause before or after the consent phrase to add phonetic variety 
-        (e.g., “The weather today is bright and calm” or “This recording is made clearly and freely.”)
-        - Have a neutral or polite tone (no emotional extremes).
-        - Be comfortable to read aloud and phonetically rich, covering diverse vowels and consonants naturally.
-        - Be self-contained, so the full sentence can serve as an independent audio clip.
+        Sentence 1 (Consent sentence):
+        * Clearly states informed consent to use their voice for generating synthetic audio with an AI model called {audio_model_name}.
+        * Must explicitly include a consent phrase such as “I give my consent,” “I agree,” or “I allow.”
+        * Must clearly mention the model name {audio_model_name} in the sentence.
+        * Should sound fluent, polite, and natural to read aloud.
+        * Should have a neutral or positive tone and be self-contained.
 
-        Examples of structure to follow:
-        - “The weather is clear and warm today. I give my consent to use my voice for generating audio with the model {audio_model_name}.”
-        - “I give my consent to use my voice for generating audio with the model {audio_model_name}. This statement is made freely and clearly.”
-        - “Good afternoon. I agree to the use of my recorded voice for audio generation with the model {audio_model_name}.”
+        Sentence 2 (Phonetic variety sentence):
+        * Should not repeat the consent content.
+        * Adds phonetic variety with a neutral descriptive clause, for example about {topic}.
+        * Should be fluent, natural, and comfortable to read aloud.
+        * Should sound polite and neutral, without emotional extremes.
+        * Should include diverse vowels and consonants naturally for clear pronunciation.
 
-        The output should be a single, natural sentence ready to be spoken aloud for recording purposes.
+        FORMAT:
+        * Output EXACTLY two sentences.
+        * No numbering, no quotes, no bullet points, and no introductory text.
+        * Use standard punctuation.
+
+        Example format (don’t copy text, just the format):
+        I give my consent to use my voice for generating audio with the model {audio_model_name}. The weather is clear and calm this afternoon, and I’m speaking at an even pace.
         """

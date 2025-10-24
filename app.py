@@ -1,6 +1,6 @@
 import inspect
 import gradio as gr
-# import spaces
+
 from gradio_client import Client, handle_file
 
 import src.generate as generate
@@ -12,9 +12,8 @@ global client
 #chatterbox_space = gr.load("spaces/ResembleAI/Chatterbox")
 # ------------------- UI printing functions -------------------
 def clear_all():
-    # target, user_transcript, score_html, diff_html, result_html,
-    # TODO(?): Add tts_text, tts_audio, clone_status (Maybe? Was there before.)
-    return "", "", "", "", "", "", "", None,
+    # target, user_transcript, score_html, result_html, diff_html, tts_ui
+    return "", "", "", "", "", gr.Row.update(visible=False)
 
 
 def make_result_html(pass_threshold, passed, ratio):
@@ -198,7 +197,6 @@ with gr.Blocks(title="Voice Consent Gate") as demo:
                 "openai/whisper-tiny.en",  # fastest (CPU-friendly)
                 "openai/whisper-base.en",  # better accuracy, a bit slower
                 "distil-whisper/distil-small.en"  # optional distil English model
-                "distil-whisper/distil-small.en",
             ],
             value="openai/whisper-tiny.en",
             label="ASR model (English only)",
@@ -264,16 +262,27 @@ with gr.Blocks(title="Voice Consent Gate") as demo:
                                             cfg_weight, seed_num, temp],
                                     outputs=[cloned_audio])
 
-    # -------- Events --------
-    # Use pre-specified sentence bank by default
-    btn_gen.click(fn=generate.gen_sentence_set, outputs=target)
-    # Or use LLM generation:
-    # btn_gen.click(fn=generate.gen_sentence_llm, outputs=target)
+    def gen_sentence_action():
+    # chatterbox model name, detailed prompt (short_prompt=False)
+        try:
+            return generate.gen_sentence_llm(
+                "chatterbox",
+                fallback_on_error=False  # ← show errors during testing
+            )
+        except Exception as e:
+            # Show a helpful message directly in the Target sentence box
+            return f"[ERROR calling LLM] {type(e).__name__}: {e}"
 
-    # TODO(?): clearing  tts_text, tts_audio, clone_status (not sure what that was)
+    # -------- Events --------
+    # Generate sentence: fixed model name + detailed prompt
+    btn_gen.click(
+        fn=gen_sentence_action,
+        outputs=target
+    )
+
     btn_clear.click(
         fn=clear_all,
-        outputs=[target, user_transcript, score_html, result_html, diff_html]
+        outputs=[target, user_transcript, score_html, result_html, diff_html, tts_ui]
     )
 
     btn_check.click(
