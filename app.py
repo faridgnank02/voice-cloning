@@ -1,4 +1,3 @@
-import inspect
 import gradio as gr
 
 from gradio_client import Client, handle_file
@@ -19,7 +18,8 @@ def clear_all():
 def make_result_html(pass_threshold, passed, ratio):
     """Returns HTML summarizing results.
     Parameters:
-        pass_threshold: Minimum percentage of match between target and recognized user utterance that counts as passing.
+        pass_threshold: Minimum percentage of match between target and
+        recognized user utterance that counts as passing.
         passed: Whether the recognized user utterance is >= `pass_threshold`.
         ratio: Sequence match ratio.
     """
@@ -78,16 +78,16 @@ def make_html(sentence_match):
     return score_html, result_html, diff_html
 
 
-# ------------------- Core Check (English-only) -------------------
+# ------------------- Core Check (Currently English-only) -------------------
 # @spaces.GPU
 def get_user_transcript(audio_path: gr.Audio, target_sentence: str,
-                        model_id: str, device_pref: str) -> (str, str):
+                        asr_model_id: str, device_pref: str) -> (str, str):
     """ASR for the input audio and basic validation.
-    Uses the selected ASR model `model_id` to recognize words in the input `audio_path`.
+    Uses the selected ASR model `asr_model_id` to recognize words in the input `audio_path`.
     Parameters:
         audio_path: Processed audio file returned from gradio Audio component.
         target_sentence: Sentence the user needs to say.
-        model_id: Desired ASR model.
+        asr_model_id: Desired ASR model.
         device_pref: Preferred ASR processing device. Can be "auto", "cpu", "cuda".
     Returns:
         error_msg: If there's an error, a string describing what happened.
@@ -101,7 +101,7 @@ def get_user_transcript(audio_path: gr.Audio, target_sentence: str,
         return "Please start, record, then stop the audio recording before trying to transcribe.", ""
 
     # Runs the automatic speech recognition
-    user_transcript = process.run_asr(audio_path, model_id, device_pref)
+    user_transcript = process.run_asr(audio_path, asr_model_id, device_pref)
 
     # Handles processing errors.
     if isinstance(user_transcript, Exception):
@@ -109,13 +109,13 @@ def get_user_transcript(audio_path: gr.Audio, target_sentence: str,
     return "", user_transcript
 
 
-def transcribe_check(audio_path, target_sentence, model_id, device_pref,
+def transcribe_check(audio_path, target_sentence, asr_model_id, device_pref,
                      pass_threshold):
     """Transcribe user, calculate match to target sentence, create results HTML.
     Parameters:
         audio_path: Local path to recorded audio.
         target_sentence: Sentence the user needs to say.
-        model_id: Desired ASR model.
+        asr_model_id: Desired ASR model.
         device_pref: Preferred ASR processing device. Can be "auto", "cpu", "cuda".
     Returns:
         user_transcript: The recognized user utterance
@@ -127,7 +127,8 @@ def transcribe_check(audio_path, target_sentence, model_id, device_pref,
     clone_audio = False
     # Transcribe user input
     error_msg, user_transcript = get_user_transcript(audio_path,
-                                                     target_sentence, model_id,
+                                                     target_sentence,
+                                                     asr_model_id,
                                                      device_pref)
     if error_msg:
         score_html = ""
@@ -143,9 +144,11 @@ def transcribe_check(audio_path, target_sentence, model_id, device_pref,
         # Create the output to print out
         score_html, result_html, diff_html = make_html(sentence_match)
 
-    return user_transcript, score_html, result_html, diff_html, gr.Row(visible=clone_audio)
+    return (user_transcript, score_html, result_html, diff_html,
+            gr.Row(visible=clone_audio))
 
-def clone_voice(audio_input, text_input, exaggeration_input, cfgw_input, seed_num_input, temperature_input):
+def clone_voice(audio_input, text_input, exaggeration_input, cfgw_input,
+                seed_num_input, temperature_input):
     global client
     # Additional specifications for Chatterbox include:
     # exaggeration_input=0.5,
@@ -157,29 +160,56 @@ def clone_voice(audio_input, text_input, exaggeration_input, cfgw_input, seed_nu
                           audio_prompt_path_input=handle_file(audio_input),
                           exaggeration_input=exaggeration_input,
                           cfgw_input=cfgw_input,
-                          seed_num_input=seed_num_input, temperature_input=temperature_input)
+                          seed_num_input=seed_num_input,
+                          temperature_input=temperature_input)
 
 
 # ------------------- UI -------------------
 with gr.Blocks(title="Voice Consent Gate") as demo:
     gr.Markdown("# Voice Consent Gate: Demo")
-    gr.Markdown(
-        """
-        ## 🎤 Say the Sentence (English)
-        1) Generate a sentence.  
-        2) Record yourself reading it.  
-        3) Transcribe & check your accuracy.  
-        4) If matched, clone your voice to speak any sentence you enter.
-        """
-    )
-    with gr.Accordion(label="Further Details", open=False):
-        gr.Markdown("""
-            To create a basic consented voice cloning system, you need 2 parts:
-            1. An automatic speech recognition (ASR) system that recognizes a sentence conveying consent from the person whose voice will be cloned.
-            2. A voice-cloning text-to-speech (TTS) system that takes as input text and the speaker’s speech snippets to generate speech.
-
-            Some voice-cloning TTS systems can now generate speech similar to a speaker’s voice using _just one sentence_. This means that a sentence used for consent can **also** be used for voice cloning. We demonstrate one way to do that here.
-            """)
+    with gr.Row():
+        with gr.Column():
+            with gr.Accordion(
+                    label="Click for further information on this demo",
+                    open=False):
+                gr.Markdown("""
+                    To create a basic consented voice cloning system, you need 2 parts:
+                    1. An automatic speech recognition (ASR) system that recognizes a sentence conveying consent from the person whose voice will be cloned.
+                    2. A voice-cloning text-to-speech (TTS) system that takes as input text and the speaker’s speech snippets to generate speech.
+    
+                    Some voice-cloning TTS systems can now generate speech similar to a speaker’s voice using _just one sentence_. This means that a sentence used for consent can **also** be used for voice cloning. We demonstrate one way to do that here.
+                    """)
+    with gr.Row():
+        with gr.Column(scale=2):
+            gr.Markdown(
+                """# 🎤 Say the Sentence (English)"""
+            )
+            gr.Markdown(
+            """
+            ## 1) Generate a sentence.  
+            ## 2) Record yourself reading it.  
+            ## 3) Transcribe & check your accuracy.  
+            ## 4) If matched, clone your voice to speak any sentence you enter.
+            """
+            )
+        with gr.Column():
+            consent_method = gr.Dropdown(label="Sentence generation method",
+                                         choices=["Llama 3.2 3B Instruct",
+                                                  "Pre-written"],
+                                         value="Pre-written")
+            asr_model = gr.Dropdown(label="Speech recognition model",
+                                    choices=["openai/whisper-tiny.en",  # fastest (CPU-friendly)
+                                            "openai/whisper-base.en",  # better accuracy, a bit slower
+                                            "distil-whisper/distil-small.en"
+                                            # optional distil English model
+                                            ],
+                                    value="openai/whisper-tiny.en",
+                                    )
+            voice_clone_model = gr.Dropdown(
+                label="Voice cloning model",
+                choices=["Chatterbox", ], value="Chatterbox")
+        #with gr.Column():
+        #    pass # Just for spacing
     with gr.Row():
         target = gr.Textbox(label="Target sentence", interactive=False,
                             placeholder="Click 'Generate sentence'")
@@ -189,18 +219,10 @@ with gr.Blocks(title="Voice Consent Gate") as demo:
         btn_clear = gr.Button("🧹 Clear")
 
     with gr.Row():
-        consent_audio = gr.Audio(sources=["microphone"], type="filepath", label="Record your voice", key='consent_audio')
+        consent_audio = gr.Audio(sources=["microphone"], type="filepath",
+                                 label="Record your voice", key='consent_audio')
 
-    with gr.Accordion("Advanced settings", open=False):
-        model_id = gr.Dropdown(
-            choices=[
-                "openai/whisper-tiny.en",  # fastest (CPU-friendly)
-                "openai/whisper-base.en",  # better accuracy, a bit slower
-                "distil-whisper/distil-small.en"  # optional distil English model
-            ],
-            value="openai/whisper-tiny.en",
-            label="ASR model (English only)",
-        )
+    with gr.Accordion("Advanced ASR settings", open=False):
         device_pref = gr.Radio(
             choices=["auto", "cpu", "cuda"],
             value="auto",
@@ -262,32 +284,23 @@ with gr.Blocks(title="Voice Consent Gate") as demo:
                                             cfg_weight, seed_num, temp],
                                     outputs=[cloned_audio])
 
-    def gen_sentence_action():
-    # chatterbox model name, detailed prompt (short_prompt=False)
-        try:
-            return generate.gen_sentence_llm(
-                "chatterbox",
-                fallback_on_error=False  # ← show errors during testing
-            )
-        except Exception as e:
-            # Show a helpful message directly in the Target sentence box
-            return f"[ERROR calling LLM] {type(e).__name__}: {e}"
-
     # -------- Events --------
-    # Generate sentence: fixed model name + detailed prompt
+    # Generate sentence: including model name + detailed prompt
     btn_gen.click(
-        fn=gen_sentence_action,
+        fn=generate.gen_sentence,
+        inputs=[consent_method, voice_clone_model],
         outputs=target
     )
 
     btn_clear.click(
         fn=clear_all,
-        outputs=[target, user_transcript, score_html, result_html, diff_html, tts_ui]
+        outputs=[target, user_transcript, score_html, result_html, diff_html,
+                 tts_ui]
     )
 
     btn_check.click(
         fn=transcribe_check,
-        inputs=[consent_audio, target, model_id, device_pref, pass_threshold],
+        inputs=[consent_audio, target, asr_model, device_pref, pass_threshold],
         outputs=[user_transcript, score_html, result_html, diff_html, tts_ui]
     )
 

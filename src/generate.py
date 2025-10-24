@@ -92,10 +92,22 @@ def _extract_llama_text(result: Any) -> str:
     return ""
 
 
-def gen_sentence_llm(
-    audio_model_name: str = "chatterbox",
-    *,
-    fallback_on_error: bool = False  # Set True for production to avoid crashes
+def gen_sentence(sentence_method="Pre-written", audio_model_name="Chatterbox"):
+    # chatterbox model name, detailed prompt (short_prompt=False)
+    if sentence_method == "Pre-written":
+        return gen_sentence_set()
+    else:
+        try:
+            return gen_sentence_llm(sentence_method,
+                audio_model_name,
+                fallback_on_error=False  # ← show errors during testing
+            )
+        except Exception as e:
+            # Show a helpful message directly in the Target sentence box
+            return f"[ERROR calling LLM] {type(e).__name__}: {e}"
+
+# TODO: Support more than just Llama 3.2 3B Instruct
+def gen_sentence_llm(sentence_method="Llama 3.2 3B Instruct", audio_model_name: str = "Chatterbox", *, fallback_on_error: bool = False  # Set True for production to avoid crashes
 ) -> str:
     """
     Generate a consent sentence using the Llama 3.2 3B Instruct demo Space.
@@ -111,7 +123,7 @@ def gen_sentence_llm(
     ----------
     audio_model_name : str, optional
         The name of the voice-cloning model to mention in the sentence.
-        Defaults to "chatterbox".
+        Defaults to "Chatterbox".
     fallback_on_error : bool, optional
         If True, return a random fallback sentence instead of raising
         an error when the Space call fails. Default is False for debugging.
