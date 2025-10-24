@@ -1,3 +1,4 @@
+import inspect
 import gradio as gr
 # import spaces
 from gradio_client import Client, handle_file
@@ -5,7 +6,6 @@ from gradio_client import Client, handle_file
 import src.generate as generate
 import src.process as process
 
-# TODO: Abusing the 'global' notation for now so we can be flexible to multiple clients.
 global client
 
 # TODO: Ideally, instead of the Client method we're using for an external voice cloning app, we use the .load() function and pass in arguments to it directly while displaying the developer's desired UI.
@@ -146,31 +146,41 @@ def transcribe_check(audio_path, target_sentence, model_id, device_pref,
 
     return user_transcript, score_html, result_html, diff_html, gr.Row(visible=clone_audio)
 
-def clone_voice(audio_input, text_input):
-    # TODO: Note that this is the 'global' hack to pass in the client.
+def clone_voice(audio_input, text_input, exaggeration_input, cfgw_input, seed_num_input, temperature_input):
     global client
     # Additional specifications for Chatterbox include:
     # exaggeration_input=0.5,
     # temperature_input=0.8,
-    # seed_num_input=0,
+    # seed_num_input=0,z
     # cfgw_input=0.5,
     # api_name="/generate_tts_audio"
     return client.predict(text_input=text_input,
-                            audio_prompt_path_input=handle_file(audio_input))
+                          audio_prompt_path_input=handle_file(audio_input),
+                          exaggeration_input=exaggeration_input,
+                          cfgw_input=cfgw_input,
+                          seed_num_input=seed_num_input, temperature_input=temperature_input)
 
 
 # ------------------- UI -------------------
-with gr.Blocks(title="Say the Sentence (English)") as demo:
+with gr.Blocks(title="Voice Consent Gate") as demo:
+    gr.Markdown("# Voice Consent Gate: Demo")
     gr.Markdown(
         """
-        # 🎤 Say the Sentence (English)
+        ## 🎤 Say the Sentence (English)
         1) Generate a sentence.  
         2) Record yourself reading it.  
         3) Transcribe & check your accuracy.  
         4) If matched, clone your voice to speak any sentence you enter.
         """
     )
+    with gr.Accordion(label="Further Details", open=False):
+        gr.Markdown("""
+            To create a basic consented voice cloning system, you need 2 parts:
+            1. An automatic speech recognition (ASR) system that recognizes a sentence conveying consent from the person whose voice will be cloned.
+            2. A voice-cloning text-to-speech (TTS) system that takes as input text and the speaker’s speech snippets to generate speech.
 
+            Some voice-cloning TTS systems can now generate speech similar to a speaker’s voice using _just one sentence_. This means that a sentence used for consent can **also** be used for voice cloning. We demonstrate one way to do that here.
+            """)
     with gr.Row():
         target = gr.Textbox(label="Target sentence", interactive=False,
                             placeholder="Click 'Generate sentence'")
@@ -211,31 +221,48 @@ with gr.Blocks(title="Say the Sentence (English)") as demo:
     diff_html = gr.HTML(
         label="Word-level diff (red = expected but missing / green = extra or replacement)")
 
+    gr.Markdown("## 🔁 Voice Consent Gate (opens upon consent)")
     # TODO: Ideally this is gr.Blocks, but that seems to have a visibility-change bug.
     with gr.Row(visible=False) as tts_ui:
-        # Using the render decorator so that we can easily pass in the consent audio after it's recorded.
+        # Using the render decorator so that we can access consent audio after it's recorded.
         @gr.render(inputs=consent_audio)
         def show_tts(audio_input):
-            # TODO: Abusing global, since we can't send a Client as a component to a function.
             global client
             if audio_input:
                 client = Client("ResembleAI/Chatterbox")
                 with gr.Row():
-                    gr.Markdown("# 🔁 Voice cloning")
-                with gr.Row():
                     with gr.Column():
                         gr.Markdown("## Audio input")
                         # Prepopulating with the consent audio.
-                        tts_audio = gr.Audio(audio_input, interactive=True, type="filepath")
+                        # Set interactive=True to be able to change.
+                        tts_audio = gr.Audio(audio_input, type="filepath")
                 with gr.Row():
                     with gr.Column():
                         gr.Markdown("## Text input")
                         tts_text = gr.Textbox(
                             "Now let's make my mum's favourite. So three mars bars into the pan. Then we add the tuna and just stir for a bit, just let the chocolate and fish infuse. A sprinkle of olive oil and some tomato ketchup. Now smell that. Oh boy this is going to be incredible.", interactive=True)
                 with gr.Row():
+                    # TODO: Ideally, these options aren't hardcoded -- e.g., using .load(), where they're imported, allowing for different options depending on the client.
+                    with gr.Accordion("More options", open=False):
+                        exaggeration = gr.Slider(
+                            0.25, 2, step=.05,
+                            label="Exaggeration (Neutral = 0.5, extreme values can be unstable)",
+                            value=.5
+                        )
+                        cfg_weight = gr.Slider(
+                            0.2, 1, step=.05, label="CFG/Pace", value=0.5
+                        )
+                        seed_num = gr.Number(value=0,
+                                             label="Random seed (0 for random)")
+                        temp = gr.Slider(0.05, 5, step=.05,
+                                         label="Temperature", value=.8)
+                with gr.Row():
                     clone_btn = gr.Button("Clone!")
                     cloned_audio = gr.Audio()
-                    clone_btn.click(fn=clone_voice, inputs=[tts_audio, tts_text], outputs=[cloned_audio])
+                    clone_btn.click(fn=clone_voice,
+                                    inputs=[tts_audio, tts_text, exaggeration,
+                                            cfg_weight, seed_num, temp],
+                                    outputs=[cloned_audio])
 
     # -------- Events --------
     # Use pre-specified sentence bank by default
