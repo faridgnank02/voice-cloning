@@ -1,6 +1,6 @@
 # src/prompts.py
 
-def get_consent_generation_prompt(audio_model_name: str, short_prompt: bool = False) -> str:
+def get_consent_generation_prompt(audio_model_name: str) -> str:
     """
     Returns a text prompt instructing the model to generate a natural-sounding
     consent sentence for voice cloning with the specified model.
@@ -13,15 +13,6 @@ def get_consent_generation_prompt(audio_model_name: str, short_prompt: bool = Fa
     Returns:
         str: The prompt text.
     """
-
-    if short_prompt:
-        return (
-            f"Generate one natural, spoken-style English sentence (10–20 words) in which a person "
-            f"clearly gives informed consent to use their voice for generating synthetic audio "
-            f"with the model {audio_model_name}. The sentence should sound conversational, include "
-            f"a clear consent phrase like 'I give my consent' or 'I agree', mention {audio_model_name} "
-            f"by name, and be phonetically varied but neutral in tone. Output only the final sentence."
-        )
 
     return f"""
         Generate a short, natural-sounding English sentence (10–20 words) that a person could say aloud 
@@ -43,5 +34,6 @@ def get_consent_generation_prompt(audio_model_name: str, short_prompt: bool = Fa
         - “I give my consent to use my voice for generating audio with the model {audio_model_name}. This statement is made freely and clearly.”
         - “Good afternoon. I agree to the use of my recorded voice for audio generation with the model {audio_model_name}.”
 
-        The output should be one to three natural sentences ready to be spoken aloud for recording purposes.
+        The output should be one to three natural sentences ready to be spoken aloud for recording purposes. 
+        Only output the sentences that the speaker should read, no extra information, no justifications, no formatting or lists. Only the suggested sentence.
         """
