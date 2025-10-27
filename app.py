@@ -195,10 +195,11 @@ with gr.Blocks(title="Voice Consent Gate") as demo:
             """
             )
         with gr.Column():
-            consent_method = gr.Dropdown(label="Sentence generation method",
-                                         choices=["Llama 3.2 3B Instruct",
-                                                  "Pre-written"],
-                                         value="Pre-written")
+            consent_method = gr.Dropdown(
+                label="Sentence generation method",
+                choices=["Llama 3.2 3B Instruct"],
+                value="Llama 3.2 3B Instruct"
+            )
             asr_model = gr.Dropdown(label="Speech recognition model",
                                     choices=["openai/whisper-tiny.en",  # fastest (CPU-friendly)
                                             "openai/whisper-base.en",  # better accuracy, a bit slower
