@@ -21,6 +21,8 @@ from src.prompts import get_consent_generation_prompt
 
 
 # ------------------- Model / Space Configuration -------------------
+# The demo connects to the Llama 3.2 3B Instruct Space on Hugging Face.
+# You can override these defaults by setting environment variables in your Space.
 LLAMA_SPACE_ID = os.getenv(
     "LLAMA_SPACE_ID", "huggingface-projects/llama-3.2-3B-Instruct"
 )
@@ -31,6 +33,21 @@ HF_TOKEN = os.getenv("HF_TOKEN")  # Optional; not required for public Spaces.
 def _extract_llama_text(result: Any) -> str:
     """
     Normalize the API response from the Llama 3.2 3B demo Space into plain text.
+
+    The Space’s `/chat` endpoint may return different shapes depending on how
+    the Gradio app is structured — sometimes a string, other times a dictionary
+    or list. This function recursively traverses and extracts the first
+    meaningful text string it finds.
+
+    Parameters
+    ----------
+    result : Any
+        The raw output returned by `client.predict()`.
+
+    Returns
+    -------
+    str
+        Cleaned text output (may be empty string if extraction fails).
     """
     if isinstance(result, str):
         return result.strip()
@@ -62,18 +79,43 @@ def gen_sentence(_ignored_method="Llama 3.2 3B Instruct", audio_model_name="Chat
         # Show a helpful message directly in the Target sentence box
         return f"[ERROR calling LLM] {type(e).__name__}: {e}"
 
-
+# TODO: Support more than just Llama 3.2 3B Instruct
 def gen_sentence_llm(
     sentence_method: str = "Llama 3.2 3B Instruct",
     audio_model_name: str = "Chatterbox",
     *,
     fallback_on_error: bool = False  # kept for signature parity; does nothing now
 ) -> str:
-    """
+     """
     Generate a consent sentence using the Llama 3.2 3B Instruct demo Space.
 
-    Returns a single English sentence suitable for reading aloud.
+    This function constructs a prompt describing the linguistic and ethical
+    requirements for a consent sentence (via `get_consent_generation_prompt`)
+    and sends it to the Llama demo hosted on Hugging Face Spaces.
+
+    The response is normalized into a single English sentence suitable
+    for reading aloud.
+
+    Parameters
+    ----------
+    audio_model_name : str, optional
+        The name of the voice-cloning model to mention in the sentence.
+        Defaults to "Chatterbox".
+    fallback_on_error : bool, optional
+        If True, return a random fallback sentence instead of raising
+        an error when the Space call fails. Default is False for debugging.
+
+    Returns
+    -------
+    str
+        A clean, human-readable consent sentence.
+
+    Raises
+    ------
+    Exception
+        Re-raises the underlying error if `fallback_on_error` is False.
     """
+    # Generate the full natural-language prompt that the LLM will receive
     prompt = get_consent_generation_prompt(audio_model_name)
 
     try:
