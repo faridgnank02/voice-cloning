@@ -7,6 +7,8 @@ import src.process as process
 
 global client
 
+GATE_IMAGE_PATH = "./assets/voice_consent_gate_50.png"
+
 # TODO: Ideally, instead of the Client method we're using for an external voice cloning app, we use the .load() function and pass in arguments to it directly while displaying the developer's desired UI.
 #chatterbox_space = gr.load("spaces/ResembleAI/Chatterbox")
 # ------------------- UI printing functions -------------------
@@ -168,6 +170,8 @@ def clone_voice(audio_input, text_input, exaggeration_input, cfgw_input,
 with gr.Blocks(title="Voice Consent Gate") as demo:
     gr.Markdown("# Voice Consent Gate: Demo")
     with gr.Row():
+        with gr.Column():
+            gr.Image(GATE_IMAGE_PATH, interactive=False, show_download_button=False)
         with gr.Column():
             with gr.Accordion(
                     label="Click for further information on this demo",
