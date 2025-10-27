@@ -9,7 +9,7 @@ Hugging Face Space for Llama 3.2 3B Instruct) to generate natural-sounding
 sentences that users can read aloud to give informed consent for voice cloning.
 
 If the model call fails (e.g., due to rate limits or network issues),
-an error is surfaced to the UI (no local fallback).
+an error is surfaced to the UI.
 """
 
 import os
@@ -68,13 +68,13 @@ def _extract_llama_text(result: Any) -> str:
     return ""
 
 
-def gen_sentence(_ignored_method="Llama 3.2 3B Instruct", audio_model_name="Chatterbox"):
+def gen_sentence(audio_model_name="Chatterbox"):
     """
     Always generate a sentence via the LLM. UI may still pass a 'method' arg,
     but it's ignored to keep the callback signature stable.
     """
     try:
-        return gen_sentence_llm(audio_model_name=audio_model_name, fallback_on_error=False)
+        return gen_sentence_llm(audio_model_name=audio_model_name)
     except Exception as e:
         # Show a helpful message directly in the Target sentence box
         return f"[ERROR calling LLM] {type(e).__name__}: {e}"
@@ -83,8 +83,7 @@ def gen_sentence(_ignored_method="Llama 3.2 3B Instruct", audio_model_name="Chat
 def gen_sentence_llm(
     sentence_method: str = "Llama 3.2 3B Instruct",
     audio_model_name: str = "Chatterbox",
-    *,
-    fallback_on_error: bool = False  # kept for signature parity; does nothing now
+    *
 ) -> str:
      """
     Generate a consent sentence using the Llama 3.2 3B Instruct demo Space.
@@ -101,19 +100,11 @@ def gen_sentence_llm(
     audio_model_name : str, optional
         The name of the voice-cloning model to mention in the sentence.
         Defaults to "Chatterbox".
-    fallback_on_error : bool, optional
-        If True, return a random fallback sentence instead of raising
-        an error when the Space call fails. Default is False for debugging.
 
     Returns
     -------
     str
         A clean, human-readable consent sentence.
-
-    Raises
-    ------
-    Exception
-        Re-raises the underlying error if `fallback_on_error` is False.
     """
     # Generate the full natural-language prompt that the LLM will receive
     prompt = get_consent_generation_prompt(audio_model_name)
@@ -141,5 +132,4 @@ def gen_sentence_llm(
 
     except Exception as e:
         print(f"[gen_sentence_llm] Llama Space call failed: {type(e).__name__}: {e}")
-        # No local fallback anymore; surface the error to the UI.
         raise
