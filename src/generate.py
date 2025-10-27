@@ -72,45 +72,44 @@ def _extract_llama_text(result: Any) -> str:
     return ""
 
 
-def gen_sentence(audio_model_name="Chatterbox"):
+def gen_sentence(consent_method="Llama 3.2 3B Instruct", voice_clone_model="Chatterbox"):
     """
     Always generate a sentence via the LLM.
+    :param consent_method:
     """
     try:
-        return gen_sentence_llm(audio_model_name=audio_model_name)
+        return gen_sentence_llm(consent_method, voice_clone_model)
     except Exception as e:
         # Show a helpful message directly in the Target sentence box
         return f"[ERROR calling LLM] {type(e).__name__}: {e}"
 
 # TODO: Support more than just Llama 3.2 3B Instruct
-def gen_sentence_llm(
-    sentence_method: str = "Llama 3.2 3B Instruct",
-    audio_model_name: str = "Chatterbox",
-    *
-) -> str:
-     """
-    Generate a consent sentence using the Llama 3.2 3B Instruct demo Space.
-
-    This function constructs a prompt describing the linguistic and ethical
-    requirements for a consent sentence (via `get_consent_generation_prompt`)
-    and sends it to the Llama demo hosted on Hugging Face Spaces.
-
-    The response is normalized into a single English sentence suitable
-    for reading aloud.
-
-    Parameters
-    ----------
-    audio_model_name : str, optional
-        The name of the voice-cloning model to mention in the sentence.
-        Defaults to "Chatterbox".
-
-    Returns
-    -------
-    str
-        A clean, human-readable consent sentence.
+def gen_sentence_llm(consent_method="Llama 3.2 3B Instruct", voice_clone_model="Chatterbox") -> str:
     """
+   Generate a consent sentence using the Llama 3.2 3B Instruct demo Space.
+
+   This function constructs a prompt describing the linguistic and ethical
+   requirements for a consent sentence (via `get_consent_generation_prompt`)
+   and sends it to the Llama demo hosted on Hugging Face Spaces.
+
+   The response is normalized into a single English sentence suitable
+   for reading aloud.
+
+   Parameters
+   ----------
+   audio_model_name : str, optional
+       The name of the voice-cloning model to mention in the sentence.
+       Defaults to "Chatterbox".
+
+   Returns
+   -------
+   str
+       A clean, human-readable consent sentence.
+       :param consent_method:
+       :param voice_clone_model:
+   """
     # Generate the full natural-language prompt that the LLM will receive
-    prompt = get_consent_generation_prompt(audio_model_name)
+    prompt = get_consent_generation_prompt(voice_clone_model)
 
     try:
         # Initialize Gradio client for the Llama demo Space

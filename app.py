@@ -179,6 +179,7 @@ with gr.Blocks(title="Voice Consent Gate") as demo:
                 1.  A way of generating novel consent sentences for the person whose voice will be cloned – the “speaker” – to say, making sure the sentence isn’t part of a previous recording but instead uniquely references the current consent context.
                 2. An _automatic speech recognition (ASR) system_ that recognizes the sentence conveying consent.
                 3. A _voice-cloning text-to-speech (TTS) system_ that takes as input text and the voice clonee’s speech snippets to generate speech.
+                
                 Some voice-cloning TTS systems can now generate speech similar to a speaker’s voice using _just one sentence_. This means that a sentence used for consent can **also** be used for voice cloning. We demonstrate one way to do that here.
                 """)
     with gr.Row():
@@ -196,11 +197,11 @@ with gr.Blocks(title="Voice Consent Gate") as demo:
             )
         with gr.Column():
             consent_method = gr.Dropdown(
-                label="Sentence generation method",
+                label="Sentence generation method (currently limited to Llama 3.2 3B Instruct)",
                 choices=["Llama 3.2 3B Instruct"],
                 value="Llama 3.2 3B Instruct"
             )
-            asr_model = gr.Dropdown(label="Speech recognition model",
+            asr_model = gr.Dropdown(label="Speech recognition model (currently limited to Whisper)",
                                     choices=["openai/whisper-tiny.en",  # fastest (CPU-friendly)
                                             "openai/whisper-base.en",  # better accuracy, a bit slower
                                             "distil-whisper/distil-small.en"
@@ -209,7 +210,7 @@ with gr.Blocks(title="Voice Consent Gate") as demo:
                                     value="openai/whisper-tiny.en",
                                     )
             voice_clone_model = gr.Dropdown(
-                label="Voice cloning model",
+                label="Voice cloning model (currently limited to Chatterbox)",
                 choices=["Chatterbox", ], value="Chatterbox")
         #with gr.Column():
         #    pass # Just for spacing
@@ -231,6 +232,7 @@ with gr.Blocks(title="Voice Consent Gate") as demo:
             value="auto",
             label="Device preference"
         )
+        # In your own code, do not provide users with the option to change this: Set it yourself.
         pass_threshold = gr.Slider(0.50, 1.00, value=0.85, step=0.01,
                                    label="Match threshold")
 
@@ -257,8 +259,8 @@ with gr.Blocks(title="Voice Consent Gate") as demo:
                     with gr.Column():
                         gr.Markdown("## Audio input")
                         # Prepopulating with the consent audio.
-                        # Set interactive=True to be able to change.
-                        tts_audio = gr.Audio(audio_input, type="filepath")
+                        # Setting interactive=False keeps it from being possible to upload something else.
+                        tts_audio = gr.Audio(audio_input, type="filepath", interactive=False)
                 with gr.Row():
                     with gr.Column():
                         gr.Markdown("## Text input")
@@ -281,7 +283,7 @@ with gr.Blocks(title="Voice Consent Gate") as demo:
                                          label="Temperature", value=.8)
                 with gr.Row():
                     clone_btn = gr.Button("Clone!")
-                    cloned_audio = gr.Audio()
+                    cloned_audio = gr.Audio(show_download_button=True)
                     clone_btn.click(fn=clone_voice,
                                     inputs=[tts_audio, tts_text, exaggeration,
                                             cfg_weight, seed_num, temp],
