@@ -174,13 +174,13 @@ with gr.Blocks(title="Voice Consent Gate") as demo:
                     open=False):
                 gr.Markdown("""
 
+To create a basic voice cloning system with a voice consent gate, you need three parts:
+1. A way of generating novel consent sentences for the person whose voice will be cloned – the “speaker” – to say, uniquely referencing the current consent context.
+2. An _automatic speech recognition (ASR) system_ that recognizes the sentence conveying consent.
+3. A _voice-cloning text-to-speech (TTS) system_ that takes as input text and the speaker's speech snippets to generate speech.
 
-                To create a basic voice cloning system with a voice consent gate, you need three parts:
-                1.  A way of generating novel consent sentences for the person whose voice will be cloned – the “speaker” – to say, making sure the sentence isn’t part of a previous recording but instead uniquely references the current consent context.
-                2. An _automatic speech recognition (ASR) system_ that recognizes the sentence conveying consent.
-                3. A _voice-cloning text-to-speech (TTS) system_ that takes as input text and the voice clonee’s speech snippets to generate speech.
-                Some voice-cloning TTS systems can now generate speech similar to a speaker’s voice using _just one sentence_. This means that a sentence used for consent can **also** be used for voice cloning. We demonstrate one way to do that here.
-                """)
+Since some voice-cloning TTS systems can now generate speech similar to a speaker’s voice using _just one sentence_, a sentence used for consent can **also** be used for voice cloning. 
+""")
     with gr.Row():
         with gr.Column(scale=2):
             gr.Markdown(
