@@ -8,8 +8,9 @@ This module connects to an external language model (in this case, the public
 Hugging Face Space for Llama 3.2 3B Instruct) to generate natural-sounding
 sentences that users can read aloud to give informed consent for voice cloning.
 
-If the model call fails (e.g., due to rate limits or network issues),
-an error is surfaced to the UI.
+Functions:
+    - _extract_llama_text(): Normalize the API output from the Llama demo.
+    - gen_sentence_llm(): Generate a consent sentence from the Llama model Space.
 """
 
 import os
@@ -54,6 +55,8 @@ def _extract_llama_text(result: Any) -> str:
     if isinstance(result, (int, float, bool)):
         return str(result)
     if isinstance(result, list):
+        # If multiple segments are returned (e.g., multiple sentences),
+        # join them into one string.
         parts = []
         for x in result:
             s = _extract_llama_text(x)
@@ -61,6 +64,7 @@ def _extract_llama_text(result: Any) -> str:
                 parts.append(s)
         return " ".join(parts).strip()
     if isinstance(result, dict):
+        # Common key names used in Gradio JSON responses
         for key in ("text", "response", "content", "generated_text", "message"):
             v = result.get(key)
             if isinstance(v, str) and v.strip():
@@ -70,8 +74,7 @@ def _extract_llama_text(result: Any) -> str:
 
 def gen_sentence(audio_model_name="Chatterbox"):
     """
-    Always generate a sentence via the LLM. UI may still pass a 'method' arg,
-    but it's ignored to keep the callback signature stable.
+    Always generate a sentence via the LLM.
     """
     try:
         return gen_sentence_llm(audio_model_name=audio_model_name)
@@ -110,7 +113,10 @@ def gen_sentence_llm(
     prompt = get_consent_generation_prompt(audio_model_name)
 
     try:
+        # Initialize Gradio client for the Llama demo Space
         client = Client(LLAMA_SPACE_ID, hf_token=HF_TOKEN)
+
+        # The Llama demo exposes a simple /chat endpoint with standard decoding params
         result = client.predict(
             message=prompt,
             max_new_tokens=128,
@@ -121,12 +127,15 @@ def gen_sentence_llm(
             api_name=LLAMA_API_NAME,
         )
 
+        # Normalize and clean up model output
         text = _extract_llama_text(result)
         text = process.normalize_text(text, lower=False)
 
+        # Handle empty or malformed outputs
         if not text:
             raise ValueError("Empty response from Llama Space")
 
+        # In case the model produces multiple lines or options, pick the first full sentence
         first_line = next((ln.strip() for ln in text.splitlines() if ln.strip()), "")
         return first_line or text
 
