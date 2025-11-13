@@ -3,3 +3,8 @@ transformers>=4.44.0
 torch>=2.2.0
 accelerate>=0.33.0
 sentencepiece>=0.2.0
+# TTS with compatible versions
+numpy>=1.24.0,<2.0
+pandas>=2.0.0,<3.0
+TTS>=0.22.0
+scipy>=1.11.0

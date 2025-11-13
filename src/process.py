@@ -11,12 +11,13 @@ from transformers import pipeline
 # ------------------- Utilities -------------------
 def normalize_text(t: str, lower: bool = True) -> str:
     """For normalizing LLM-generated and human-generated strings.
-    For LLMs, this removes extraneous quote marks and spaces."""
-    # English-only normalization: lowercase, keep letters/digits/' and -
+    For LLMs, this removes extraneous quote marks and spaces.
+    Now supports multiple languages with accented characters."""
     if lower:
         t = t.lower()
-    # TODO: Previously was re.sub(r"[^a-z0-9'\-]+", " ", t); discuss normalizing for LLMs too.
-    t = re.sub(r"[^a-zA-Z0-9'\-.,]+", " ", t)
+    # Multilingual normalization: keep letters (including accented), digits, and basic punctuation
+    # Support for accented characters (é, è, ñ, ü, etc.)
+    t = re.sub(r"[^\w\s'\-.,]+", " ", t, flags=re.UNICODE)
     t = re.sub(r"\s+", " ", t).strip()
     return t
 
@@ -45,19 +46,24 @@ def get_asr_pipeline(model_id: str, device_preference: str) -> pipeline:
         return_timestamps=False,
     )
 
-def run_asr(audio_path: gr_audio, model_id: str, device_pref: str) -> str | Exception:
+def run_asr(audio_path: gr_audio, model_id: str, device_pref: str, language: str = "en") -> str | Exception:
     """Returns the recognized user utterance from the input audio stream.
     Parameters:
         audio_path: gradio.Audio component.
         model_id: String of desired ASR model.
-        device_preference: String of desired device for ASR processing, "cuda", "cpu", or "auto".
+        device_pref: String of desired device for ASR processing, "cuda", "cpu", or "auto".
+        language: Language code for transcription (e.g., "en", "fr", "es").
     Returns:
         hyp_raw: Recognized user utterance.
     """
     asr = get_asr_pipeline(model_id, device_pref)
     try:
-        # IMPORTANT: For English-only Whisper (.en), do NOT pass language/task args.
-        result = asr(audio_path)
+        # For multilingual models, specify language and task
+        # For English-only models (.en), don't pass language/task args
+        if ".en" in model_id:
+            result = asr(audio_path)
+        else:
+            result = asr(audio_path, generate_kwargs={"language": language, "task": "transcribe"})
         hyp_raw = result["text"].strip()
     except Exception as e:
         return e

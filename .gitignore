@@ -1,0 +1,128 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environment
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Large Model Files
+*.pth
+*.pt
+*.bin
+*.ckpt
+*.safetensors
+*.pkl
+*.h5
+*.pb
+
+# Audio Files (temporary/test)
+*.wav
+*.mp3
+*.flac
+*.ogg
+*.m4a
+!assets/**/*.wav
+!assets/**/*.mp3
+
+# Gradio temporary files
+gradio_cached_examples/
+flagged/
+*.db
+*.sqlite
+*.sqlite3
+
+# Logs
+*.log
+logs/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Thumbnails
+._*
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+
+# Documentation build
+docs/_build/
+site/
+
+# Large files (>100MB)
+# Add specific large files here if needed
+
+# Sensitive data
+*.key
+*.pem
+*.crt
+secrets/
+credentials/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.bak
+*.backup
+app.py.backup
+app_simple.py
+
+# Ollama models (cached locally)
+.ollama/
+
+# TTS model cache (will be downloaded on first run)
+# Note: These are large files that will be re-downloaded
+.TTS/
+tts_models/
+
+# Scripts directory - keep all scripts in repo
+!scripts/
+!scripts/*.py
+!scripts/*.md
