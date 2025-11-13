@@ -6,6 +6,8 @@
 
 A privacy-focused voice consent verification system with local voice cloning capabilities. Generate consent sentences in 10 languages, verify voice recordings, and clone voices using XTTS v2 - all running locally on your machine.
 
+> **Original Project**: This project is based on the [Voice Consent Gate](https://huggingface.co/blog/voice-consent-gate) by Hugging Face. Major contributions include multilingual support, local XTTS v2 integration, and Mac M1 optimization.
+
 ## ✨ Key Features
 
 - 🗣️ **Multilingual Consent Gate**: Generate and verify consent in 10 languages
@@ -184,6 +186,7 @@ MIT License - See LICENSE file for details
 
 ## 🙏 Acknowledgments
 
+- **[Hugging Face](https://huggingface.co/blog/voice-consent-gate)** - Original Voice Consent Gate project
 - [Coqui TTS](https://github.com/coqui-ai/TTS) - XTTS v2 engine
 - [OpenAI Whisper](https://github.com/openai/whisper) - Speech recognition
 - [Ollama](https://ollama.ai/) - Local LLM infrastructure
@@ -192,10 +195,10 @@ MIT License - See LICENSE file for details
 
 ## 🔗 Links
 
+- [Original Project](https://huggingface.co/blog/voice-consent-gate) - Hugging Face Voice Consent Gate
 - [GitHub Repository](https://github.com/faridgnank02/voice-cloning)
 - [Full Documentation](docs/README.md)
 - [Technical Guide](docs/CONTRIBUTIONS.md)
 
 ---
 
-**Built with ❤️ for privacy-conscious voice applications**

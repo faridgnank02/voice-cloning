@@ -6,6 +6,8 @@
 
 A multilingual voice consent verification system with local voice cloning capabilities, powered by XTTS v2 and Ollama.
 
+> **Original Project**: This project is based on the [Voice Consent Gate](https://huggingface.co/blog/voice-consent-gate) by Hugging Face. This version adds multilingual support (10 languages), local XTTS v2 voice cloning (17 languages), Mac M1 MPS optimization, and removes dependency on external APIs.
+
 ## 🌟 Features
 
 ### 🗣️ Voice Consent Gate
@@ -300,9 +302,18 @@ Contributions are welcome! Please see [CONTRIBUTIONS.md](CONTRIBUTIONS.md) for d
 
 MIT License - See [LICENSE](LICENSE) file for details
 
+## 🙏 Acknowledgments
+
+- **[Hugging Face](https://huggingface.co/blog/voice-consent-gate)** - Original Voice Consent Gate project
+- **Coqui TTS** for XTTS v2 voice cloning engine
+- **OpenAI** for Whisper ASR model
+- **Meta** for llama3 language model
+- **Ollama** for local LLM infrastructure
+- **Gradio** for the web interface framework
 
 ## 🔗 Links
 
+- [Original Project](https://huggingface.co/blog/voice-consent-gate) - Hugging Face Voice Consent Gate
 - [Ollama](https://ollama.ai/)
 - [Coqui TTS](https://github.com/coqui-ai/TTS)
 - [Gradio](https://gradio.app/)
@@ -310,5 +321,3 @@ MIT License - See [LICENSE](LICENSE) file for details
 - [llama3](https://ollama.ai/library/llama3)
 
 ---
-
-**Built with ❤️ for privacy-conscious voice applications**
