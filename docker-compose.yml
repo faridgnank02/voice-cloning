@@ -1,0 +1,17 @@
+services:
+  voice-agent:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      VOICE_AGENT_DB: /app/data/voice_profiles.sqlite3
+      VOICE_AGENT_LLM_PROVIDER: ${VOICE_AGENT_LLM_PROVIDER:-ollama}
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3:8b}
+      ASR_MODEL: ${ASR_MODEL:-openai/whisper-base}
+      ASR_DEVICE: ${ASR_DEVICE:-cpu}
+    volumes:
+      - voice-agent-data:/app/data
+
+volumes:
+  voice-agent-data:

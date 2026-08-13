@@ -1,0 +1,9 @@
+:root { color-scheme: dark; font: 16px system-ui, sans-serif; }
+body { margin: 0; background: #10131a; color: #e8ecf1; }
+main { max-width: 720px; margin: 4rem auto; padding: 0 1.5rem; }
+label { display: block; margin: 1rem 0; }
+input { margin-left: .5rem; padding: .5rem; background: #1d2430; color: inherit; border: 1px solid #475569; border-radius: .35rem; }
+button { margin-right: .5rem; padding: .6rem .9rem; border: 0; border-radius: .35rem; cursor: pointer; }
+button:disabled { cursor: not-allowed; opacity: .45; }
+pre { min-height: 3rem; padding: 1rem; background: #171c26; border-radius: .5rem; white-space: pre-wrap; }
+#status { color: #7dd3fc; }

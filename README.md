@@ -184,6 +184,36 @@ Contributions welcome! See [CONTRIBUTIONS.md](docs/CONTRIBUTIONS.md) for technic
 
 MIT License - See LICENSE file for details
 
+## Real-Time Voice Agent (experimental)
+
+The repository now includes a consent-backed browser voice-agent service. It requires a verified `VoiceProfile`, keeps provider credentials server-side, and does not persist raw audio by default.
+
+Start the service with:
+
+```bash
+uvicorn voice_agent.server:app --reload
+```
+
+Open http://127.0.0.1:8000, enter a profile ID registered through the consent flow, and connect. The WebSocket endpoint is `/ws`; it accepts browser audio frames and streams transcript, assistant text, and WAV audio events.
+
+The service now persists profile metadata in `data/voice_profiles.sqlite3`. Run `python app.py` first, complete the multilingual consent gate, and copy the displayed Voice profile ID into the browser client. Then start the WebSocket service in a second terminal. The profile ID is not sufficient without the matching consent record in the same database.
+
+For a containerized run:
+
+```bash
+docker compose up --build
+```
+
+Health check: http://127.0.0.1:8000/healthz
+
+The provider adapters support local Whisper/XTTS, Ollama, and OpenAI-compatible chat APIs. Configure provider instances in `create_app()` before deployment; do not put API keys in browser code.
+
+Run the dependency-free latency smoke benchmark with:
+
+```bash
+python scripts/benchmark_voice_agent.py --mock
+```
+
 ## 🙏 Acknowledgments
 
 - **[Hugging Face](https://huggingface.co/blog/voice-consent-gate)** - Original Voice Consent Gate project
@@ -201,4 +231,3 @@ MIT License - See LICENSE file for details
 - [Technical Guide](docs/CONTRIBUTIONS.md)
 
 ---
-

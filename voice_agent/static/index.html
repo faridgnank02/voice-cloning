@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Consent-backed Voice Agent</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <main>
+      <h1>Consent-backed Voice Agent</h1>
+      <p>Use a verified voice profile to start a private browser conversation.</p>
+      <label>Voice profile ID <input id="profile-id" placeholder="profile-1" /></label>
+      <label>Language <input id="language" value="en" maxlength="8" /></label>
+      <div class="controls">
+        <button id="connect">Connect</button>
+        <button id="record" disabled>Start recording</button>
+        <button id="interrupt" disabled>Interrupt</button>
+      </div>
+      <p id="status">Disconnected</p>
+      <section>
+        <h2>Transcript</h2>
+        <pre id="transcript"></pre>
+        <h2>Assistant</h2>
+        <pre id="assistant"></pre>
+      </section>
+    </main>
+    <script src="/static/client.js"></script>
+  </body>
+</html>

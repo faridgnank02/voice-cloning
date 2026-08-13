@@ -1,9 +1,35 @@
 import gradio as gr
+from datetime import datetime, timezone
+from pathlib import Path
+from uuid import uuid4
+
 import src.generate as generate
 import src.process as process
 import src.tts as tts
+from voice_agent.profiles import ProfileStore, VoiceProfile
+from voice_agent.storage import SQLiteConsentVerifier, SQLiteProfileRepository
 
 GATE_IMAGE_PATH = "./assets/voice_consent_gate_50.png"
+
+
+_profile_repository = SQLiteProfileRepository(str(Path("data") / "voice_profiles.sqlite3"))
+_consent_verifier = SQLiteConsentVerifier(_profile_repository)
+_profile_store = ProfileStore(_consent_verifier, _profile_repository)
+
+
+def register_verified_profile(
+    reference_audio_path: str, consent_id: str, language: str
+) -> VoiceProfile:
+    """Register a profile after the consent result has been independently recorded."""
+    profile = VoiceProfile(
+        profile_id=str(uuid4()),
+        consent_id=consent_id,
+        consented_at=datetime.now(timezone.utc),
+        language=language,
+        reference_audio_path=reference_audio_path,
+    )
+    _profile_store.register(profile)
+    return profile
 
 # Language-specific example texts
 EXAMPLE_TEXTS = {
@@ -20,7 +46,7 @@ EXAMPLE_TEXTS = {
 }
 
 def clear_all():
-    return "", "", "", "", "", gr.Row(update(visible=False))
+    return "", "", "", "", "", gr.Row(update(visible=False)), "", ""
 
 def make_result_html(pass_threshold, passed, ratio):
     summary = (
@@ -77,6 +103,8 @@ def get_user_transcript(audio_path, target_sentence, asr_model_id, device_pref, 
 
 def transcribe_check(audio_path, target_sentence, asr_model_id, device_pref, pass_threshold, language):
     clone_audio = False
+    profile_id = ""
+    profile_status = ""
     error_msg, user_transcript = get_user_transcript(
         audio_path, target_sentence, asr_model_id, device_pref, language
     )
@@ -91,6 +119,15 @@ def transcribe_check(audio_path, target_sentence, asr_model_id, device_pref, pas
         )
         if sentence_match.passed:
             clone_audio = True
+            consent_id = str(uuid4())
+            _profile_repository.record_consent(consent_id, language, datetime.now(timezone.utc))
+            try:
+                profile = register_verified_profile(audio_path, consent_id, language)
+                profile_id = profile.profile_id
+                profile_status = "Voice profile registered and ready to use."
+            except Exception:
+                clone_audio = False
+                profile_status = "Consent matched, but voice profile registration failed."
         score_html, result_html, diff_html = make_html(sentence_match)
     
     return (
@@ -99,16 +136,23 @@ def transcribe_check(audio_path, target_sentence, asr_model_id, device_pref, pas
         result_html,
         diff_html,
         gr.Row(visible=clone_audio),
-        EXAMPLE_TEXTS.get(language, EXAMPLE_TEXTS["en"])
+        EXAMPLE_TEXTS.get(language, EXAMPLE_TEXTS["en"]),
+        profile_id,
+        profile_status,
     )
 
-def clone_voice_wrapper(ref_audio, text, language):
+def clone_voice_wrapper(profile_id, text, language):
     """Call XTTS v2 for voice cloning using transformers pipeline"""
-    if not ref_audio:
+    if not profile_id:
+        return None
+
+    try:
+        profile = _profile_store.assert_usable(profile_id, language).profile
+    except Exception:
         return None
     
     result = tts.run_tts_clone(
-        ref_audio_path=ref_audio,
+        ref_audio_path=profile.reference_audio_path,
         text_to_speak=text,
         model_id="coqui/XTTS-v2",
         language=language
@@ -219,19 +263,17 @@ with gr.Blocks(title="Voice Consent Gate") as demo:
     diff_html = gr.HTML(
         label="Word-level diff (red = expected but missing / green = extra or replacement)"
     )
+
+    profile_id = gr.Textbox(label="Voice profile ID", interactive=False)
+    profile_status = gr.Textbox(label="Profile status", interactive=False)
     
     gr.Markdown("## 🔁 Voice Consent Gate (opens upon consent)")
     gr.Markdown("⚠️ **Note:** Sentences are generated in English then translated using llama3:8b. Voice cloning uses XTTS v2 (local, Mac M1 optimized).")
     
     with gr.Row(visible=False) as tts_ui:
         with gr.Column():
-            gr.Markdown("## 🎤 Reference Voice")
-            tts_audio = gr.Audio(
-                value=None,
-                type="filepath",
-                interactive=False,
-                label="Your voice sample"
-            )
+            gr.Markdown("## 🎤 Verified Reference Voice")
+            gr.Markdown("Your reference audio remains on the server.")
         
         with gr.Column():
             gr.Markdown("## 📝 Text to Clone")
@@ -259,13 +301,31 @@ with gr.Blocks(title="Voice Consent Gate") as demo:
     
     btn_clear.click(
         fn=clear_all,
-        outputs=[target, user_transcript, score_html, result_html, diff_html, tts_ui]
+        outputs=[
+            target,
+            user_transcript,
+            score_html,
+            result_html,
+            diff_html,
+            tts_ui,
+            profile_id,
+            profile_status,
+        ]
     )
     
     btn_check.click(
         fn=transcribe_check,
         inputs=[consent_audio, target, asr_model, device_pref, pass_threshold, language],
-        outputs=[user_transcript, score_html, result_html, diff_html, tts_ui, tts_text]
+        outputs=[
+            user_transcript,
+            score_html,
+            result_html,
+            diff_html,
+            tts_ui,
+            tts_text,
+            profile_id,
+            profile_status,
+        ]
     ).then(
         fn=lambda audio: audio,
         inputs=[consent_audio],
@@ -274,7 +334,7 @@ with gr.Blocks(title="Voice Consent Gate") as demo:
     
     clone_btn.click(
         fn=clone_voice_wrapper,
-        inputs=[tts_audio, tts_text, language],
+        inputs=[profile_id, tts_text, language],
         outputs=[cloned_audio]
     )
 
